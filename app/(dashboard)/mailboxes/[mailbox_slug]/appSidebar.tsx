@@ -25,12 +25,6 @@ import {
 } from "@/components/ui/sidebar";
 import { api } from "@/trpc/react";
 
-declare global {
-  interface Window {
-    __unstable__onBeforeSetActive: () => void;
-  }
-}
-
 export function AppSidebar({ mailboxSlug }: { mailboxSlug: string }) {
   const pathname = usePathname();
   const router = useRouter();
