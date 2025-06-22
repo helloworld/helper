@@ -12,7 +12,7 @@ import { api } from "@/trpc/react";
 import { SwitchSectionWrapper } from "../sectionWrapper";
 import { ColorInput } from "./colorInput";
 
-export type ThemeUpdates = {
+type ThemeUpdates = {
   theme?: {
     background: string;
     foreground: string;
