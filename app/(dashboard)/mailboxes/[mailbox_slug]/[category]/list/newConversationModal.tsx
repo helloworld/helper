@@ -14,10 +14,11 @@ import { Button } from "@/components/ui/button";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { isValidEmailAddress } from "@/components/utils/email";
 import { captureExceptionAndLog } from "@/lib/shared/sentry";
 import { RouterInputs } from "@/trpc";
 import { api } from "@/trpc/react";
+
+const isValidEmailAddress = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/u.test(email);
 
 type NewConversationInfo = {
   to_email_address: string;

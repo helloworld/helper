@@ -4,7 +4,17 @@ import { forwardRef } from "react";
 import { UploadStatus, useFileUpload, type UnsavedFileInfo } from "@/components/fileUploadContext";
 import LoadingSpinner from "@/components/loadingSpinner";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { formatSizeHuman } from "@/components/utils/files";
+
+const formatSizeHuman = (size: number, suffix = "B") => {
+  const units = ["", "K", "M", "G"];
+  for (const unit of units) {
+    if (Math.abs(size) < 1024.0) {
+      return `${size.toFixed(1)} ${unit}${suffix}`;
+    }
+    size /= 1024.0;
+  }
+  return `${size.toFixed(1)} T${suffix}`;
+};
 
 type ActionIconProps = React.HTMLAttributes<HTMLButtonElement> & {
   label?: string;
