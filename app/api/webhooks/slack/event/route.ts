@@ -8,7 +8,6 @@ import { disconnectSlack } from "@/lib/data/mailbox";
 import { findMailboxForEvent } from "@/lib/slack/agent/findMailboxForEvent";
 import { handleAssistantThreadMessage, handleMessage, isAgentThread } from "@/lib/slack/agent/handleMessages";
 import { handleSlackErrors, verifySlackRequest } from "@/lib/slack/client";
-import { handleSlackUnfurl } from "@/lib/slack/linkUnfurl";
 
 export const POST = async (request: Request) => {
   const body = await request.text();
@@ -57,10 +56,6 @@ export const POST = async (request: Request) => {
 
   if (event.type === "assistant_thread_started") {
     waitUntil(handleSlackErrors(handleAssistantThreadMessage(event, mailboxInfo)));
-    return new Response("Success!", { status: 200 });
-  }
-  if (event.type === "link_shared") {
-    waitUntil(handleSlackErrors(handleSlackUnfurl(event)));
     return new Response("Success!", { status: 200 });
   }
 
