@@ -1,5 +1,6 @@
 import * as Sentry from "@sentry/nextjs";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useId, useState } from "react";
 import SlackSvg from "@/app/(dashboard)/mailboxes/[mailbox_slug]/icons/slack.svg";
 import { toast } from "@/components/hooks/use-toast";
@@ -8,7 +9,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useRunOnce } from "@/components/useRunOnce";
-import useShowToastForSlackConnectStatus from "@/components/useShowToastForSlackConnectStatus";
 import { RouterOutputs } from "@/trpc";
 import { api } from "@/trpc/react";
 import SectionWrapper from "../sectionWrapper";
@@ -114,6 +114,7 @@ export const SlackChannels = ({
 };
 
 const SlackSetting = ({ mailbox }: { mailbox: RouterOutputs["mailbox"]["get"] }) => {
+  const router = useRouter();
   const { mutateAsync: disconnectSlack } = api.mailbox.slack.disconnect.useMutation();
   const [isSlackConnected, setSlackConnected] = useState(mailbox.slackConnected);
   const channelUID = useId();
@@ -129,7 +130,29 @@ const SlackSetting = ({ mailbox }: { mailbox: RouterOutputs["mailbox"]["get"] })
       });
     },
   });
-  useShowToastForSlackConnectStatus();
+  
+  // Inline useShowToastForSlackConnectStatus logic
+  useEffect(() => {
+    const url = new URL(location.href);
+    const slackConnectResult = url.searchParams.get("slackConnectResult");
+
+    if (!slackConnectResult) return;
+
+    if (slackConnectResult === "success") {
+      toast({
+        title: "Slack successfully connected. Your teammates can now sign in.",
+        variant: "success",
+      });
+    } else if (slackConnectResult === "error") {
+      toast({
+        title: "Failed to connect Slack, please try again",
+        variant: "destructive",
+      });
+    }
+
+    url.searchParams.delete("slackConnectResult");
+    router.replace(url.toString());
+  }, [router]);
 
   const onDisconnectSlack = async () => {
     try {
