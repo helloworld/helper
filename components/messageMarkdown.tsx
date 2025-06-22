@@ -1,26 +1,23 @@
 import ReactMarkdown from "react-markdown";
 
-const rehypeAddWbrAfterSlash = () => {
-  return (tree: any) => {
-    const nodesToReplace: { node: any; newChildren: any[] }[] = [];
+type TreeNode = {
+  type: string;
+  value?: string;
+  children?: TreeNode[];
+  parent?: TreeNode;
+  tagName?: string;
+  properties?: any;
+  url?: string;
+};
 
-    const walk = (node: any): void => {
-      if (node.type === "text" && node.value && typeof node.value === "string" && node.value.includes("/")) {
-        const parts = node.value.split(/(\/{1,})/);
-        if (parts.length > 1) {
-          const newChildren: any[] = [];
-          parts.forEach((part: string, index: number) => {
-            if (/^\/{1,}$/.test(part)) {
-              newChildren.push({ type: "text", value: part });
-              newChildren.push({ type: "element", tagName: "wbr", properties: {}, children: [] });
-            } else if (part) {
-              newChildren.push({ type: "text", value: part });
-            }
-          });
+type NodeProcessor = (node: TreeNode, nodesToReplace: { node: TreeNode; newChildren: TreeNode[] }[]) => void;
 
-          nodesToReplace.push({ node, newChildren });
-        }
-      }
+const createTreeWalker = (processNode: NodeProcessor) => {
+  return (tree: TreeNode) => {
+    const nodesToReplace: { node: TreeNode; newChildren: TreeNode[] }[] = [];
+
+    const walk = (node: TreeNode): void => {
+      processNode(node, nodesToReplace);
 
       if (node.children) {
         for (const child of node.children) {
@@ -41,84 +38,85 @@ const rehypeAddWbrAfterSlash = () => {
   };
 };
 
-const remarkAutolink = () => {
-  return (tree: any) => {
-    const nodesToReplace: { node: any; newChildren: any[] }[] = [];
+const rehypeAddWbrAfterSlash = () => {
+  return createTreeWalker((node, nodesToReplace) => {
+    if (node.type === "text" && node.value && typeof node.value === "string" && node.value.includes("/")) {
+      const parts = node.value.split(/(\/{1,})/);
+      if (parts.length > 1) {
+        const newChildren: TreeNode[] = [];
+        parts.forEach((part: string) => {
+          if (/^\/{1,}$/.test(part)) {
+            newChildren.push({ type: "text", value: part });
+            newChildren.push({ type: "element", tagName: "wbr", properties: {}, children: [] });
+          } else if (part) {
+            newChildren.push({ type: "text", value: part });
+          }
+        });
 
-    const isInsideLink = (node: any): boolean => {
-      let parent = node.parent;
-      while (parent) {
-        if (parent.type === "link") {
-          return true;
-        }
-        parent = parent.parent;
+        nodesToReplace.push({ node, newChildren });
       }
-      return false;
-    };
+    }
+  });
+};
 
-    const walk = (node: any): void => {
-      if (node.type === "text" && node.value && typeof node.value === "string" && !isInsideLink(node)) {
-        const urlRegex = /(https?:\/\/[^\s<>"\[\]{}|\\^`]+?)(?=[.,;:!?)\]}]*(?:\s|$))/gi;
-        const matches = Array.from(node.value.matchAll(urlRegex));
+const remarkAutolink = () => {
+  const isInsideLink = (node: TreeNode): boolean => {
+    let parent = node.parent;
+    while (parent) {
+      if (parent.type === "link") {
+        return true;
+      }
+      parent = parent.parent;
+    }
+    return false;
+  };
 
-        if (matches.length > 0) {
-          const newChildren: any[] = [];
-          let lastIndex = 0;
+  return createTreeWalker((node, nodesToReplace) => {
+    if (node.type === "text" && node.value && typeof node.value === "string" && !isInsideLink(node)) {
+      const urlRegex = /(https?:\/\/[^\s<>"\[\]{}|\\^`]+?)(?=[.,;:!?)\]}]*(?:\s|$))/gi;
+      const matches = Array.from(node.value.matchAll(urlRegex));
 
-          matches.forEach((match: unknown) => {
-            const regexMatch = match as RegExpMatchArray;
-            const url = regexMatch[1];
-            if (!url || regexMatch.index === undefined) return;
+      if (matches.length > 0) {
+        const newChildren: TreeNode[] = [];
+        let lastIndex = 0;
 
-            const matchStart = regexMatch.index;
-            const matchEnd = matchStart + url.length;
+        matches.forEach((match: unknown) => {
+          const regexMatch = match as RegExpMatchArray;
+          const url = regexMatch[1];
+          if (!url || regexMatch.index === undefined) return;
 
-            if (lastIndex < matchStart) {
-              newChildren.push({
-                type: "text",
-                value: node.value.slice(lastIndex, matchStart),
-              });
-            }
+          const matchStart = regexMatch.index;
+          const matchEnd = matchStart + url.length;
 
-            newChildren.push({
-              type: "link",
-              url,
-              children: [{ type: "text", value: url }],
-            });
-
-            lastIndex = matchEnd;
-          });
-
-          if (lastIndex < node.value.length) {
+          if (lastIndex < matchStart) {
             newChildren.push({
               type: "text",
-              value: node.value.slice(lastIndex),
+              value: node.value.slice(lastIndex, matchStart),
             });
           }
 
-          if (newChildren.length > 0) {
-            nodesToReplace.push({ node, newChildren });
-          }
+          newChildren.push({
+            type: "link",
+            url,
+            children: [{ type: "text", value: url }],
+          });
+
+          lastIndex = matchEnd;
+        });
+
+        if (lastIndex < node.value.length) {
+          newChildren.push({
+            type: "text",
+            value: node.value.slice(lastIndex),
+          });
+        }
+
+        if (newChildren.length > 0) {
+          nodesToReplace.push({ node, newChildren });
         }
       }
-
-      if (node.children) {
-        for (const child of node.children) {
-          child.parent = node;
-          walk(child);
-        }
-      }
-    };
-
-    walk(tree);
-
-    nodesToReplace.forEach(({ node, newChildren }) => {
-      if (node.parent?.children) {
-        const nodeIndex = node.parent.children.indexOf(node);
-        node.parent.children.splice(nodeIndex, 1, ...newChildren);
-      }
-    });
-  };
+    }
+  });
 };
 
 interface MessageMarkdownProps {
@@ -128,19 +126,14 @@ interface MessageMarkdownProps {
 }
 
 export default function MessageMarkdown({ children, className, components }: MessageMarkdownProps) {
+  if (!children) return null;
+
   return (
     <ReactMarkdown
-      className={className}
       remarkPlugins={[remarkAutolink]}
       rehypePlugins={[rehypeAddWbrAfterSlash]}
-      components={{
-        a: ({ children, ...props }: any) => (
-          <a target="_blank" rel="noopener noreferrer" {...props}>
-            {children}
-          </a>
-        ),
-        ...components,
-      }}
+      components={components}
+      className={className}
     >
       {children}
     </ReactMarkdown>
