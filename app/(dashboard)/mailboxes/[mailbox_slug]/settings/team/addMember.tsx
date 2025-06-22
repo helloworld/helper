@@ -6,6 +6,7 @@ import { toast } from "@/components/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { isValidEmailAddress } from "@/components/utils/email";
 import { api } from "@/trpc/react";
 
 type TeamInviteProps = {
@@ -62,8 +63,7 @@ export function AddMember({ mailboxSlug, teamMembers }: TeamInviteProps) {
     }
   };
 
-  const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailInput);
-  const canAddMember = isValidEmail && displayNameInput.trim().length > 0 && !isAdding;
+  const canAddMember = isValidEmailAddress(emailInput) && displayNameInput.trim().length > 0 && !isAdding;
 
   return (
     <div className="flex gap-4">
